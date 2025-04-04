@@ -2,7 +2,7 @@
 from fastapi import APIRouter
 
 # router는 여러 기능(API 주소들)을 모아두는 모음집이다.
-router=APIRouter
+router=APIRouter()
 
 # ---------------------------------------------------------
 # 이 함수는 어떤 할 일을 "완료" 상태로 표시하는 기능이다.
@@ -12,7 +12,7 @@ router=APIRouter
 # - put은 기존 정보를 바꾸거나 설정할 때 사용한다.
 # - 주소 끝에 /done 이 붙은 건 "완료 상태"를 나타낸다.
 # - {task_id}는 바뀌는 숫자이다. 할 일 번호를 뜻한다. 
-@router.put("/tasks{task_id}/done")
+@router.put("/tasks/{task_id}/done")
 async def mark_task_as_done():
     pass # 아직 기능은 만들지 않았고, 나중에 실제 동작을 추가할 예정이다.
 
