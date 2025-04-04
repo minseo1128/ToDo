@@ -1,8 +1,8 @@
 # FastAPI에서 여러 주소(URL 경로)를 관리하기 위한 도구를 불러온다.
-from fastapi import APIRuther
+from fastapi import APIRouter
 
 # router는 여러 기능(API 주소들)을 모아두는 모음집이다.
-router=APIRuther()
+router=APIRouter
 
 # ---------------------------------------------------------
 # 이 함수는 어떤 할 일을 "완료" 상태로 표시하는 기능이다.
