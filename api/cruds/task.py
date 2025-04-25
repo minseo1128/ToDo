@@ -20,9 +20,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 # * task_model:
 #   - 실제 DB에 저장될 Task 테이블 클래스가 정의되어 있음
 # * task_schema:
-#   - 사용자의 요청/응답 데이터를 저의한 Pydantic 스키미 클래스\
+#   - 사용자의 요청/응답 데이터를 저의한 Pydantic 스키미 클래스
 import api.models.task as task_model
 import api.schemas.task as task_schema
+
+# * select:
+#   - SQLAlchemy에서 SELECT 쿼리를 만들 때 사용
+# * Result:
+#   - 쿼리 실행 결과를 담는 객체(fetchall() 또는 all()로 결과 추출 가능)
+from sqlalchemy import select
+from sqlalchemy.engine import Result
 
 # ------------------------------------------------
 # [ 함수: cteate_task ]
@@ -52,3 +59,28 @@ async def create_task(db: AsyncSession,task_create: task_schema.TaskCreate) -> t
     
     # * 최종적으로 저장된 Task 객체를 변환 (API 응답에서 사용됨)
     return task 
+
+    # -----------------------------------------------
+    # [ 함수: get_task_with_done ]
+    # 모든 할 일을 불러오고, 각 할 일이 완료되었는지도 함께 알려주는 함수
+    # - '완료 여부'는 Done 테이블에 데이터가 있는지를 기준으로 판단함
+    # -----------------------------------------------
+    
+    # * 반환값: (id,title,done) 형식의 듀플 리스트
+    # - 예: [(1, "공부하기, True"),(2, "청소하기", False), ...]
+async def get_task_with_done(db: AsyncSession)->list[tuple[int,str,bool]]:
+    result: Result = await db.execute(
+        select(
+            task_model.Task.id,                             # 할 일 번호
+            task_model.Task.title,                          # 할 일 제목  
+            task_model.Done.id.isnot(None).label("done"),
+            # * Done 테이블에 이 할 일(Task)의 완료 기록이 있으면->True
+            # * Done 테이블에 없으면->False(아직 완료 안된 상태)    
+            # ※ 이간 SQL에서 '외부 조인'이라는 방법을 써서 확인함
+            #    -> 쉽게 말해, '모든 할 일'을 다 불러오고, 그 중에서 완료된 것도 표시하는 방식
+        ).outerjoin(task_model.Done) # ※ outerjoin: 할 일이 완료됐든 안 됐든 모두 가져오기기
+    )
+        
+    # 쿼리 결과를 리스트로 반환함
+    return result.all()
+    
