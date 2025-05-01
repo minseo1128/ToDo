@@ -60,14 +60,51 @@ async def create_task(db: AsyncSession,task_create: task_schema.TaskCreate) -> t
     # * 최종적으로 저장된 Task 객체를 변환 (API 응답에서 사용됨)
     return task 
 
-    # -----------------------------------------------
-    # [ 함수: get_task_with_done ]
-    # 모든 할 일을 불러오고, 각 할 일이 완료되었는지도 함께 알려주는 함수
-    # - '완료 여부'는 Done 테이블에 데이터가 있는지를 기준으로 판단함
-    # -----------------------------------------------
+# ----------------------------------------------
+# [ 함수 : get_task]
+# 특정 id에 해당하는 할 일을 하나만 가져오는 함수
+# - 할 일이 존재하지 않으면 None을 반환한다
+# -----------------------------------------------
     
-    # * 반환값: (id,title,done) 형식의 듀플 리스트
-    # - 예: [(1, "공부하기, True"),(2, "청소하기", False), ...]
+# * 함수 정의: async def ... -> 비동기 DB 작업을 위해 async 사용
+# * 매개변수:
+#   - db: 비동기 DB 세션
+#   - task_id: 조회할 Task의 고유 번호
+# * 반환값: Task 객체 또는 None
+async def get_task(db:AsyncSession,task_id:int) -> task_model.Task | None:
+    result: Result=await db.execute(
+        # * await: DB에 쿼리를 보낸 뒤, 결과가 올 때까지 기다림
+        select(task_model.Task).filter(task_model.Task.id==task_id)
+        # * SELECT 쿼리: Task 테이블에서 id가 task_id인 항목을 찾음
+    )    
+    return result.scalars().first()
+# * result.scalars(): 결과 중 실제 모델 객체만 추출
+# * .first(): 첫 번째 결과만 반환 (없으면 None 반환됨)
+
+# -----------------------------------------------
+# [ 함수: update_task]
+# 기존 할 일(Task) 객체를 받아 내용을 수정하고 DB에 반영하는 함수
+# -----------------------------------------------
+
+# * 함수 정의: async def ...-> 비동기 DB 작업을 위해 async 사용
+# * 매게변수:
+#   - db: 비동기 DB 세션
+#   - task_create: 수정할 내용을 담고 있는 Pydantic 스키마 (title만 포함)
+#   - original: 기존 DB에서 가져온 Task 객체
+#  * 반환값: 수정된 Task 객체
+async def update_task(
+    db: AsyncSession, task_create: task_schema.TaskCreate,original: task_model.Task
+) -> task_model.Task:
+    original.title=task_create.title
+
+# -----------------------------------------------
+# [ 함수: get_task_with_done ]
+# 모든 할 일을 불러오고, 각 할 일이 완료되었는지도 함께 알려주는 함수
+# - '완료 여부'는 Done 테이블에 데이터가 있는지를 기준으로 판단함
+# -----------------------------------------------
+    
+# * 반환값: (id,title,done) 형식의 듀플 리스트
+# - 예: [(1, "공부하기, True"),(2, "청소하기", False), ...]
 async def get_task_with_done(db: AsyncSession)->list[tuple[int,str,bool]]:
     result: Result = await db.execute(
         select(
