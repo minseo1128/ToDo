@@ -96,13 +96,49 @@ async def update_task(
     db: AsyncSession, task_create: task_schema.TaskCreate,original: task_model.Task
 ) -> task_model.Task:
     original.title=task_create.title
+    # * 기존 Task 객체의 title 값을 수정함
+    
+    db.add(original)
+    # * 수정된 객체를 세션에 등록 (SQLAlchemysms 상태 변경을 추적함)
+    
+    await db.commit()
+    # * 실제 DB에 반영함 (비동기이므로 await 필수)
+    
+    await db.refresh(original)
+    # * 최신 상태의 데이터를 다시 불러옴 (예: 다른 필드가 자동 변경된 경우)
+    
+    return original
+    # 수정 완료된 Task 객체를 반환함
+    
+# ----------------------------------------------
+# [ 함수: delete_task ]
+# 기존 할 일(Task) 객체를 받아서 DB에서 삭제하는 함수
+# ----------------------------------------------
+
+# * 함수 정의: async def ...->비동기 DB 작업을 위해 async 사용
+# * 매게 변수: 
+#   - db: 비동기 DB 세션 (AsyncSession)
+#   - original: 삭제할 Task 객체 (이미 DB에서 조화된 상태)
+# * 반환값: 없음 (삭제만 수행하고 결과는 따로 반환하지 않음)
+async def delete_task(db:AsyncSession,original:task_model.Task) -> None:
+    # * db.delete(original):
+    #   - DB 세션에서 해당 Task객체를 삭제 대상으로 표시함
+    #   - 실제로 삭제되는 건 아니고 "삭제 준비됨" 상태가 됨
+    
+    await db.delete(original)
+    # * await:delete 작업이 완료될 때까지 기다림 (비동기 방식으로 처리)
+    
+    await db.commit()
+    # * 실제로 DB에서 데이터를 삭제함
+    #   - commit을 해야 삭제가 최종적으로 반영됨
 
 # -----------------------------------------------
 # [ 함수: get_task_with_done ]
 # 모든 할 일을 불러오고, 각 할 일이 완료되었는지도 함께 알려주는 함수
 # - '완료 여부'는 Done 테이블에 데이터가 있는지를 기준으로 판단함
 # -----------------------------------------------
-    
+
+# * 함수 정의: async def ...-> 비동기  DB 작업을 위해 async 사용
 # * 반환값: (id,title,done) 형식의 듀플 리스트
 # - 예: [(1, "공부하기, True"),(2, "청소하기", False), ...]
 async def get_task_with_done(db: AsyncSession)->list[tuple[int,str,bool]]:
