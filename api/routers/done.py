@@ -1,30 +1,71 @@
-# FastAPI에서 여러 주소(URL 경로)를 관리하기 위한 도구를 불러온다.
-from fastapi import APIRouter
+# ------------------------------
+# 파일명: done.py 
+# 위치: api/routers/done.py
+# 이 파일은 할 일(Task)을 완료 처리하거나 완료를 취소하는 기능을 정의합니다.
+# - 기능1: 완료 처리 (PUT 요청)
+# - 기능2: 완료 취소 (DELETE 요청)
+# - 요청 주소: /task/{할 일 번호}/dobe
+# ------------------------------
 
-# router는 여러 기능(API 주소들)을 모아두는 모음집이다.
+# FastAPI 기능들을 불러옵니다
+from fastapi import APIRouter, HTTPException, Depends
+# - APIRouter: 여러  API 경로 (URL)를 그룹으로 묶는 데 사용
+# - HTTPException: 오류가 발생했을 때 사용자에게 에러 응답을 보내는 데 사용
+# - Depends: 다른 함수(Db 접속 등)에 자동으로 연결해주는 도구 
+
+# SQLAlchemy의 비동기 DB 세션에 불러옵니다.
+from sqlalchemy.ext.asyncio import AsyncSession
+# - DB와 연결할 때 비동기 방식으로 작업하기 위해 필요
+    
+# 완료 기능에 필요한 스키마(입출력 형식)를 불러옵니다
+import api.schemas.done as done_schema
+
+# 완료 기능을 처리하는 CRUD 함수들을 불러옵니댜
+import api.cruds.done as done_crud
+
+# DB 접속에 필요한 함수 (FastAPI에서 의존성 주입에 사용)
+from api.db import get_db
+
+
+# ------------------------------
+# router 객체 생성
+# - 여러 API 경로를 하날로 묶어서 관리할 수 있게 도와줍니다
+# - main.py에서 이 routers를 FastAPI 앱에 등록해서 사용합니다
+# ------------------------------
 router=APIRouter()
 
 # ---------------------------------------------------------
-# 할 일을 "완료 상태"로 표시하는 기능
-# 예: /tasks/3/done -> 3번 할 일을 완료 처리한다.
+# [1] 할 일을 "완료 상태"로 표시하는 API
+# - 요청 방식: PUT
+# - 요청 주소: /tasks/3/done
+#   (3번 할 일을 완료로 표시한다는 의미)
+# ------------------------------
+@router.put("/tasks/{task_id}/done",response_model=done_schema.DoneResponse)
+# task_id는 URL에서 전달받은 숫자(예: 3번 할 일)
+# db는 비동기 DB 세션, Depends를 통해 자동으로 주입됨
+async def mark_task_as_done(task_id: int, db:AsyncSession=Depends(get_db)):
+    # 먼저 해당 할 일이 이미 완료되었는지 확인합니다
+    done=await done_crud.get_done(db,task_id=task_id)
+    if done is not None:
+        # 이미 완료된 경우 예외 발생
+        raise HTTPException(status_code=400,detail="Done already exsits")
+    
+    # 완료되지 않았다면 새로 완료로 저장합니다
+    return await done_crud.create_done(db,task_id)
 
-# 💡 보충설명:
-# - put은 정보를 "설정하거나 수정"할 때 사용
-# - 주소 끝에 /done 이 붙은 건 "완료 상태 전환"을 의미
-# - {task_id}는 할 일 번호로, 숫자가 바뀔 수 있음
-@router.put("/tasks/{task_id}/done", response_model=None)
-async def mark_task_as_done(task_id:int):
-    return
-
-# ----------------------------------------------------------
-# 이 함수는 "완료 상태"를 다시 취소(해제)하는 기능
-# 예: /tasks/3/done -> 3번 할 일의 완료 표시를 해제함
-# -----------------------------------------------------------
-
-# 💡 보충 설명:
-# - DELETE는 정보를 "제거"할 때 사용 
-# - 여기선 "완료 표시"를 지우는 동작
-# - put과 delete는 반대 동작(완료 <-> 해제)
-@router.delete("/tasks/{task_id}/done",response_model=None)
-async def unmark_task_as_done(task_id:int):
-    return
+# ------------------------------
+# [2] 할 잏의 완료 상태를 해제하는 API 
+# - 요청 방식: DELETE
+# - 요청 주소: /tasks/3/done
+#   (3번 할 일을 완료 취소한다는 의미)
+# ------------------------------
+@router.delete("/tasks/{task_id}/done", response_model=None)
+async def remove_task_as_done(task_id:int, db: AsyncSession=Depends(get_db)):
+    # 먼저 완료 상태인지 확인합니다
+    done = await done_crud.get_done(db, task_id=task_id)
+    if done is None:
+        # 완료 상태가 아니라면 삭제할 것이 없으므로 예외 발생
+        raise HTTPException(status_code=404, detail="Done not found")
+    
+    # 완료 상태라면 삭제 (완료 해제)
+    return await done_crud.delete_done(db,original=done)
