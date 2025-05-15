@@ -19,7 +19,7 @@ import api.models.task as task_model
 # ------------------------------
 async def get_done(db:AsyncSession, task_id: int) -> task_model.Done | None :
     # Done 테이블에사 id가 task_id인 데이터를 선택합니다.
-    resulst: Result = await db.excute(
+    resulst: Result = await db.execute(
         select(task_model.Done).filter(task_model.Done.id==task_id)
     )
     

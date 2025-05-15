@@ -125,4 +125,4 @@ async def delete_task(task_id: int,  db: AsyncSession=Depends(get_db)):
     return await task_crud.delete_task(db,original=task)
     # * crud 모듈의 delete_task() 함수를 호출하여 실제로 DB에서 삭제함
     # * await: 삭제 직업이 끝날 때까지 기다림
-    # * 반환값이 없으므로 FastAPI는 자동으로 204 No Content 응답을 보냄냄
+    # * 반환값이 없으므로 FastAPI는 자동으로 204 No Content 응답을 보냄

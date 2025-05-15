@@ -14,7 +14,7 @@ name="todo"                                         # * 프로젝트이름(폴�
 version="0.1.0"                                     # * 버전 번호 (업데이트 시 변경)
 description=""                                      # * 프로젝트에 대한 간단한 설명
 authors=["Simmnseo <minseo20511@naver.com>"]    # * 만든 사람 정보(이름, 이메일)
-readme="READ.md"                               # * 프로젝트 소개 문서 (보통 깃허브 첫 화면에 보여질 내용)
+readme="README.md"                               # * 프로젝트 소개 문서 (보통 깃허브 첫 화면에 보여질 내용)
 
 # * 파이썬 코드가 들어 있는 폴더(패키지)를 지정한다.
 # - 실제 FastAPI API 코드는 'api' 폴더에 작성되므로 그 폴더를 포험시킴
@@ -34,20 +34,37 @@ fastapi="^0.115.12"
 # * "standard" 옵션을 통해 자동 재시작, 로깅, 보안 등 추가 기능도 포함됨
 uvicorn={extras=["standard"],version="^0.34.0"}
 
-# * SQLAlchemy : ORM 도구
-# - SQL을 직접 쓰지 않고 파이썬 코드로 테이블을 만들고 데이터를 조작할 수 있음
-sqlalchemy="^0.30.0"
+sqlalchemy="^2.0.40"
+# SQLAlchemy: 파이썬 코드로 데이터 베이스를 다루는 도구 (ORM)
 
-# psycopg2-binary:PostgreSQL에 동기 방식으로 연결할 수 있는 드라이버
-# - 'migrate_db.py'같은 초기화 스크립트에서 사용됨
-# - asyncpg가 아닌 일반 DB 연결(create_engine) 시 사용
-pyscong2-binary="^2.9.10"
+asyncpg="^0.30.0"
+# asyncpg: PostgreSQL 데이터베이스에 비동기로 연결할 수 있게 해주는 드라이버
+
+psycopg2-binary="^2.9.10"
+# psycopg2-binary: PostgreSQL에 동기 방식으로 연결하는 드라이버
+# - 비동기가 아닌 일반 DB 초기화 코드 등에서 시용됨
+
+# ----------------------------
+# 개발할 때만 사용하는 도구들 (배포에는 포함되지 않음)
+# ----------------------------
+[tool.poetry.group.dev.dependencies]
+
+pytest-asyncio="^0.26.0"
+# pytest-asyncio: async함수 테스트에 필요한 도구
+# 예: async def로 만든 함수에서 await를 사용해 테스트 가능
+
+aiosqlite="^0.21.0"
+# aiosqlite: SQLite 를 비동기로 사용할 수 있게 해주는 드라이버
+# 테스트용 DB 환경으로 자주 사용됨
+
+httpx="^0.28.1"
+# httpx: HTTP요청을 테스트할 수 있는 도구 (requests와 비슷함)
+# 비동기 방식도 지원하며 FastAPI 테스트 코드에서 사용됨
 
 # ----------------------------
 # 프로젝트를 빌드(포장하거나 배포)할 때 사용하는 설정
-# - Poetry 내부적으로 사용하느 빌드 도구 지정
 # ----------------------------
-[build-system] 
+[build-system]
 
 requires=["poetry-core"]   # * 빌드 과정에서 필요한 핵심 도구
 build-backend="poetry.core.masonry.api"   #  * 실제 빌드를 수행하는 백엔드 도구
