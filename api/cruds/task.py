@@ -5,6 +5,8 @@
 # - FastAPI에서 API 요청이 들어오면,
 #   실제 DB에서 데이터를 저장하거나 불러오는 작업을 수행한다.
 # - 이 파일에서는 SQALchemy의 비동기 세션(AsyncSession)을 사용한다.
+# - 각 함수는 async/await 문법을 사용하여 '비동식 방식'으로 DB 작업을 처리함
+#   -> 동시에 여러 요청을 빠르게 처리할 수 있어 웹 서비스에서 매우 중요함
 # --------------------------------------------
 
 # --------------------------------------------
@@ -37,7 +39,11 @@ from sqlalchemy.engine import Result
 # ------------------------------------------------
 
 # * 함수 정의: async def ... -> 비동기 DB 작업을 위해 async 사용
-# * 변환값: 저장된 Task 객체 자체 (id가 포함된 상태로 변환됨)
+# * - 시간이 오래 걸리는 작업 (예: DB 저장 등)에도 앱이 멈추지 않도록 도와줌
+# * 매개변수: 
+#   - db: 비동기 DB 세션 (AsyncSession)
+#   - task_create: 사용자 요청으로 받은 할 일(Task) 생성용 데이타 (Pydantic 스키마)
+# * 변환값: 저장된 Task 객체 자체 (id가 포함된 상태로 반환됨됨)
 async def create_task(db: AsyncSession,task_create: task_schema.TaskCreate) -> task_model.Task:
     # * task_create.model_dump():
     #   - Pydantic v2 기준: 스카마 객체를 딕셔너리로 변환하는 메서드
@@ -96,7 +102,10 @@ async def update_task(
     db: AsyncSession, task_create: task_schema.TaskCreate,original: task_model.Task
 ) -> task_model.Task:
     original.title=task_create.title
-    # * 기존 Task 객체의 title 값을 수정함
+    # * 기존 Task 객체의 title 값을 수정함'
+    
+    original.due_date=task_create.due_date
+    # * 새로 추가된 due_date(마감일)도 함께 수정함
     
     db.add(original)
     # * 수정된 객체를 세션에 등록 (SQLAlchemysms 상태 변경을 추적함)
@@ -143,17 +152,17 @@ async def delete_task(db:AsyncSession,original:task_model.Task) -> None:
 # - 예: [(1, "공부하기, True"),(2, "청소하기", False), ...]
 async def get_task_with_done(db: AsyncSession)->list[tuple[int,str,bool]]:
     result: Result = await db.execute(
+        # * await: 외부 조인을 포함한 SELECT 쿼리를 DB에 보냄
         select(
             task_model.Task.id,                             # 할 일 번호
             task_model.Task.title,                          # 할 일 제목  
+            task_model.Task.due_date,                       # 할 일 마감일 (nullable)
             task_model.Done.id.isnot(None).label("done"),
-            # * Done 테이블에 이 할 일(Task)의 완료 기록이 있으면->True
-            # * Done 테이블에 없으면->False(아직 완료 안된 상태)    
-            # ※ 이간 SQL에서 '외부 조인'이라는 방법을 써서 확인함
-            #    -> 쉽게 말해, '모든 할 일'을 다 불러오고, 그 중에서 완료된 것도 표시하는 방식
-        ).outerjoin(task_model.Done) # ※ outerjoin: 할 일이 완료됐든 안 됐든 모두 가져오기기
+            # * Done 테이블에 이 할 일(Task)의 완료 기록이 있으면->완료(True), 없으면->미완료(False)   
+            # * .isnot(None): SQL에서 "NULL이 아니면 True"라는 의미
+        ).outerjoin(task_model.Done) # ※ outerjoin: 할 일이 완료됐든 안 됐든 모두 가져오기
     )
-        
-    # 쿼리 결과를 리스트로 반환함
+    
     return result.all()
+    # * 쿼리 결과 전체를 리스트 형태로 반환함
     

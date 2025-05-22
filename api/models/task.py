@@ -8,11 +8,12 @@
 # --------------------------
 # SQLAlchemy에서 테이블을 정의할 때 필요한 기능들을 불러온다.
 # -------------------------
-from sqlalchemy import Column, Integer, String , ForeignKey
+from sqlalchemy import Column, Integer, String , ForeignKey, Date
 # * Column : 테이블의 각 열(컬럼)을 정의할 때 사용
 # * Integer : 정수형 테이터 타입 (예:ID)
 # * String : 문자열 데이터 타입 (예:제목)
 # * ForeignKey : 다른 테이블의 값을 참조할 때 사용 (외래키 설정)
+# * Date : 날짜 데이터 타입 (예:마감일)
 
 from sqlalchemy.orm import relationship
 # * 테이블 간의 관계(1:1, 등)를 정의할 때 사용하는 도구
@@ -35,6 +36,11 @@ class Task(Base) :
     # -> DB 컬럼 : tasks.title
     # * SQLAlchemy : String(1024)
     # * PostgreSQL : VARCHAR(1024)
+    
+    due_date=Column(Date)
+    # -> DB 컬럼 : tasks.due_date
+    # * SQLAlchemy: Date
+    # * PostgreSQL: DATE 형식
     
     done=relationship("Done",back_populates="task",cascade="all,delete")
     # * Task <-> Done:1:1 관계

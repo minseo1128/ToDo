@@ -32,7 +32,7 @@ import starlette.status as status
 # ------------------------
 # ASYNC_DB_URL: 테스트에 사용할 임시 SQLite 데이터베이스 주소
 # - ":memory:"는 실제 파일을 만들지 않고, 메모리에만 저장함
-# - 테스트가 끝나면 DB 내용은 모두 사라짐짐
+# - 테스트가 끝나면 DB 내용은 모두 사라짐
 # ------------------------
 ASYNC_DB_URL="sqlite+aiosqlite:///:memory:"
 
@@ -156,4 +156,29 @@ async def test_done_flag(async_client):
     # ------------------------
     response = await async_client.delete("/tasks/1/done")
     assert response.status_code == status.HTTP_404_NOT_FOUND # 존재하지 않는 상태를 다시 요청 -> 실패 응답 확인
+
+# ------------------------
+# [테스트 함수] 마감일(due_date)에 잘못된 날짜가 들어간 경우우
+# - 사용자가 title과 함께 due_date를 전송했을 떄,
+#   날짜 형식이 잘못되면 서버가 오류(422)를 반환하는지 확인
+# - 예: {"title": "테스트 작업", "due_date": "2024-12-32"}  <- 유효하지 않은 날짜짜
+# ------------------------
+@pytest.mark.asyncio
+async def test_due_date(async_client):
+    # ------------------------
+    # 1. POST 요청 전송
+    # - /tasks 주소에 JSON 데이터를 보냅니다.
+    # - title은 정상적으로 입력하고,
+    #   due_date에는 존재하지 않는 날짜(12월 32일)를 넣어 테스트합니다.
+    # ------------------------
+    response=await async_client.post(
+        "/tasks",
+        json={"title":"테스트 작업","due_date":"2024-12-32"}  # <- 잘못된 날짜
+    )
     
+    # ------------------------
+    # 2. 응답 상태 코드 확인
+    # - 날짜 형식이 잘못되었으므로 422 Unprocessable Entity를 반환해야 합니다.
+    # - Pydantic이 유효하지 않은 날짜를 감지하고 요청을 거부하게 됩니다.
+    # ------------------------
+    assert response.status_code==status.HTTP_422_UNPROCESSABLE_ENTITY
