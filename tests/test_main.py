@@ -158,27 +158,60 @@ async def test_done_flag(async_client):
     assert response.status_code == status.HTTP_404_NOT_FOUND # 존재하지 않는 상태를 다시 요청 -> 실패 응답 확인
 
 # ------------------------
-# [테스트 함수] 마감일(due_date)에 잘못된 날짜가 들어간 경우우
-# - 사용자가 title과 함께 due_date를 전송했을 떄,
-#   날짜 형식이 잘못되면 서버가 오류(422)를 반환하는지 확인
-# - 예: {"title": "테스트 작업", "due_date": "2024-12-32"}  <- 유효하지 않은 날짜짜
+# 테스트 목적: 마감일(due_date)의 유효성 검사
+# ------------------------
+# 이 테스트 함수는 사용자가 할 일을 등록할 때 입력하는 `due_date` 값이
+# 유효하지 않은 날짜이거나 올바른 형식이 아닐 경우 서버가 어떻게 반응하는지 확인합니다.
+#
+# [검사 항목]
+# (1) 올바른 날짜 입력 시 정상 처리 (200OK)
+# (2) 존재하지 않는 날짜 (예: 12월 32일) -> 오류 반환 (422)
+# (3) 잘못된 구분자 사용 (예: 2024/12/01) -> 오류 반환 (422)
+# (4) 구분자 없이 숫자만 나열 (예: 20241201) -> 오류 반환 (422)
+# 
+# 이 검사를 통해 FastAPI + Pydantic이 날짜 형식을 어떻게 검사하는지 이해할 수 있습니다.
 # ------------------------
 @pytest.mark.asyncio
 async def test_due_date(async_client):
     # ------------------------
-    # 1. POST 요청 전송
-    # - /tasks 주소에 JSON 데이터를 보냅니다.
-    # - title은 정상적으로 입력하고,
-    #   due_date에는 존재하지 않는 날짜(12월 32일)를 넣어 테스트합니다.
+    # [1] 테스트할 입력값 리스트
     # ------------------------
-    response=await async_client.post(
-        "/tasks",
-        json={"title":"테스트 작업","due_date":"2024-12-32"}  # <- 잘못된 날짜
-    )
+    # - 각 항목은 사용자가 전송할 due_date 값입니다.
+    # - 다양한 형식과 오류 유형을 포함하여 테스트 범위를 넓힙니다.
+    # ------------------------
+    input_list = [
+        "2024-12-01",  # [OK] 올바른 날짜
+        "2024-12-32",  # [X] 존재하지 않는 날짜
+        "2024-12-01",  # [X] 구분자가 잘못된 날짜
+        "20241201"   # [X] 구분자가 없이 뭉친 날짜
+    ]
     
     # ------------------------
-    # 2. 응답 상태 코드 확인
-    # - 날짜 형식이 잘못되었으므로 422 Unprocessable Entity를 반환해야 합니다.
-    # - Pydantic이 유효하지 않은 날짜를 감지하고 요청을 거부하게 됩니다.
+    # [2] 기대되는 응답 코드 리스트
     # ------------------------
-    assert response.status_code==status.HTTP_422_UNPROCESSABLE_ENTITY
+    # - 각 입력값에 대해 예상되는 서버의 응답 상태 코드를 정리합니다.
+    # - 순서는 input_list와 반드시 일치해야 합니다.
+    # ------------------------
+    expectation_list=[
+        status.HTTP_200_OK,                    # 정상 처리
+        status.HTTP_422_UNPROCESSABLE_ENTITY,  # 유효하지 않은 날짜
+        status.HTTP_422_UNPROCESSABLE_ENTITY,  # 형식 오류
+        status.HTTP_422_UNPROCESSABLE_ENTITY   # 형식 오류
+    ]
+    
+    # ------------------------
+    # [3] 빈복문을 통해 모든 케이스 테스트
+    # ------------------------
+    # - zip()을 사용해 input과 기대값을 함께 가져옵니다/
+    # - 각 케이스에 대해 POST 요청을 보내고 상대 코드가 예상과 일치하는지 확인합니다.
+    # ------------------------
+    for input_param, expectation in zip(input_list, expectation_list):
+        response = await async_client.post(
+            "/tasks",
+            json={
+                "title":"테스트 작업",
+                "due_date":input_param  # 현재 테스트할 입력값
+            }
+        )
+        #결과 검증: 응답 상태 코드가 기대값과 일치해야 통과
+        assert response.status_code == expectation
